@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Flame Test Bench</title>
+<meta property="og:title" content="Flame Test Bench | 炎色反応シミュレーション">
+<meta property="og:description" content="Three.jsで炎色反応を体験。6種の金属塩の炎色、白金線の洗浄を怠ると色が混ざる汚染、コバルトガラス越しのカリウム観察まで再現しました。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kaname-chemistry.github.io/flame-test-bench-3d/">
+<meta property="og:image" content="https://kaname-chemistry.github.io/flame-test-bench-3d/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flame Test Bench | 炎色反応シミュレーション">
+<meta name="twitter:description" content="Three.jsで炎色反応を体験。6種の金属塩の炎色、汚染、コバルトガラスまで再現。">
+<meta name="twitter:image" content="https://kaname-chemistry.github.io/flame-test-bench-3d/ogp.jpg">
+
+<link rel="icon" href="data:,">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#c7cfd6;color:#132331;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  .glass{position:fixed;background:rgba(244,248,252,.5);
+    -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+    border:1px solid rgba(255,255,255,.72);border-radius:16px;
+    box-shadow:0 10px 32px rgba(14,30,48,.2),inset 0 1px 0 rgba(255,255,255,.85)}
+  #hud{top:max(12px,env(safe-area-inset-top));right:12px;width:292px;padding:12px}
+  .cap{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#56707f;font-weight:600}
+  #sample{font-size:17px;font-weight:700;margin:2px 0 8px;line-height:1.2}
+  #sample small{font-weight:500;color:#4c6474;font-size:12.5px;margin-left:4px}
+  .obs{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  #chip{width:38px;height:38px;border-radius:10px;flex:none;border:1px solid rgba(10,20,30,.35);
+    box-shadow:inset 0 0 10px rgba(255,255,255,.35),0 0 14px rgba(0,0,0,.0);transition:background .15s}
+  #cname{font-size:14px;font-weight:650;line-height:1.2}
+  #cnote{font-size:11px;color:#56707f;margin-top:2px}
+  #spec{display:block;width:100%;height:34px;border-radius:7px;background:#05070a}
+  .ticks{display:flex;justify-content:space-between;font-size:9.5px;color:#5b7383;margin:2px 1px 8px;font-variant-numeric:tabular-nums}
+  #log{list-style:none;margin:4px 0 0;padding:0;max-height:150px;overflow:hidden;font-size:12px}
+  #log li{display:flex;align-items:center;gap:7px;padding:4px 0;border-top:1px solid rgba(30,60,80,.1)}
+  #log li i{width:11px;height:11px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.25)}
+  #log li b{font-weight:700;min-width:46px}
+  #log li em{font-style:normal;margin-left:auto;font-size:10px;font-weight:700;color:#9a3b12;background:rgba(230,120,40,.16);
+    border:1px solid rgba(200,90,30,.35);padding:1px 5px;border-radius:5px;letter-spacing:.03em}
+  #log li.sys{color:#5d7483}
+  #log .empty{color:#6a8090}
+  #ctrl{left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom));
+    width:min(700px,calc(100vw - 24px));box-sizing:border-box;padding:10px 12px}
+  .row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .row+.row{margin-top:8px}
+  button{font:inherit;font-size:13px;font-weight:600;color:#14303f;background:rgba(255,255,255,.74);
+    border:1px solid rgba(20,50,70,.22);border-radius:10px;padding:8px 10px;cursor:pointer;transition:background .15s,transform .08s}
+  button:hover{background:rgba(255,255,255,.96)} button:active{transform:scale(.97)}
+  button.on{background:#14303f;color:#fff;border-color:#14303f}
+  button.cobalt.on{background:#2742b8;border-color:#1c3196}
+  .salts button{flex:1;min-width:0;padding:8px 4px;display:flex;align-items:center;justify-content:center;gap:5px}
+  .salts button .d{width:8px;height:8px;border-radius:50%;flex:none}
+  .acts button{flex:1}
+  .lbl{font-size:12px;font-weight:600;color:#30495a;white-space:nowrap}
+  input[type=range]{flex:1;min-width:90px;accent-color:#2d6d8a}
+  #amt{font-size:12px;color:#30495a;min-width:62px;text-align:right;font-variant-numeric:tabular-nums}
+  #hint{position:fixed;left:12px;top:max(12px,env(safe-area-inset-top));font-size:11.5px;color:#36505f;
+    background:rgba(255,255,255,.42);padding:6px 9px;border-radius:9px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  @media (max-width:640px){
+    #hud{width:200px;padding:9px;right:8px;top:max(8px,env(safe-area-inset-top))}
+    #sample{font-size:14px} #sample small{display:block;margin:0}
+    #chip{width:30px;height:30px} #cname{font-size:12.5px}
+    #spec{height:20px} #log{max-height:44px;font-size:11px} #log li{padding:2px 0}
+    #cnote,.ticks{display:none} #spec{margin-bottom:6px} .cap{font-size:9px} .obs{margin-bottom:6px}
+    #ctrl{padding:8px;bottom:max(8px,env(safe-area-inset-bottom))}
+    button{font-size:12px;padding:8px 6px}
+    .salts button{font-size:11.5px;padding:8px 2px} .salts button .d{display:none}
+    #hint{display:none}
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">Drag to orbit · scroll / pinch to zoom · tap a watch glass to test it</div>
+
+<div id="hud" class="glass">
+  <div class="cap">Sample on wire</div>
+  <div id="sample">— <small>clean wire</small></div>
+  <div class="cap">Observed flame</div>
+  <div class="obs"><div id="chip"></div><div><div id="cname">pale blue</div><div id="cnote">clean Bunsen flame</div></div></div>
+  <div class="cap">Emission spectrum</div>
+  <canvas id="spec"></canvas>
+  <div class="ticks"><span>380</span><span>480</span><span>580</span><span>680</span><span>780 nm</span></div>
+  <div class="cap">Test log</div>
+  <ul id="log"><li class="empty">No samples tested yet</li></ul>
+</div>
+
+<div id="ctrl" class="glass">
+  <div class="row salts" id="salts"></div>
+  <div class="row acts">
+    <button id="bDip">Dip wire</button>
+    <button id="bClean">Clean wire</button>
+    <button id="bBack" class="on">Dark backdrop: on</button>
+  </div>
+  <div class="row">
+    <button id="bCo" class="cobalt">Cobalt glass: off</button>
+    <span class="lbl">Powder</span>
+    <input id="pick" type="range" min="0.1" max="1" step="0.01" value="0.85">
+    <span id="amt"></span>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* ================================================================
+   Salt data: flame colour, relative brightness, emission lines (nm, rel.)
+   ================================================================ */
+const srgb = (r, g, b) => new THREE.Color().setRGB(r, g, b, THREE.SRGBColorSpace);
+const SALTS = [
+  { f: 'LiCl',  html: 'LiCl',  name: 'lithium chloride',    metal: 'Li', word: 'crimson red',   col: srgb(0.88, 0.04, 0.2),  bright: 1.0,  powder: 0xf2f1ec,
+    lines: [[670.8, 1], [610.4, 0.12]] },
+  { f: 'NaCl',  html: 'NaCl',  name: 'sodium chloride',     metal: 'Na', word: 'intense yellow', col: srgb(1.0, 0.8, 0.08),  bright: 5.0,  powder: 0xf7f7f4,
+    lines: [[589.0, 1], [589.6, 0.6]] },
+  { f: 'KCl',   html: 'KCl',   name: 'potassium chloride',  metal: 'K',  word: 'lilac',          col: srgb(0.8, 0.5, 1.0),    bright: 0.9,  powder: 0xf3f4f7,
+    lines: [[766.5, 1], [769.9, 0.7], [404.4, 0.15]] },
+  { f: 'CaCl2', html: 'CaCl₂', name: 'calcium chloride',    metal: 'Ca', word: 'orange-red',     col: srgb(1.0, 0.36, 0.07),  bright: 1.0,  powder: 0xefeee8,
+    lines: [[622, 1], [554, 0.45], [422.7, 0.2]] },
+  { f: 'SrCl2', html: 'SrCl₂', name: 'strontium chloride',  metal: 'Sr', word: 'scarlet red',    col: srgb(1.0, 0.07, 0.05),  bright: 1.2,  powder: 0xf4f2ee,
+    lines: [[606, 1], [682, 0.7], [460.7, 0.3]] },
+  { f: 'CuSO4', html: 'CuSO₄', name: 'copper(II) sulfate',  metal: 'Cu', word: 'blue-green',     col: srgb(0.12, 0.92, 0.62), bright: 1.0,  powder: 0x2e7fd6,
+    lines: [[515.3, 1], [521.8, 0.8], [510.5, 0.6]] },
+];
+const BASE_LINES = [[431, 0.28], [516.5, 0.14], [473.7, 0.1]];   // CH and C2 bands of the plain flame
+const BLUE = srgb(0.32, 0.48, 1.0);
+// cobalt glass transmission: passes blue/violet and deep red, blocks yellow-orange
+function cobaltT(nm) {
+  if (nm < 500) return 0.85;
+  if (nm < 545) return 0.85 - 0.8 * (nm - 500) / 45;
+  if (nm < 655) return 0.03;
+  if (nm < 720) return 0.03 + 0.82 * (nm - 655) / 65;
+  return 0.85;
+}
+for (const s of SALTS) {
+  const tot = s.lines.reduce((a, l) => a + l[1], 0);
+  s.coT = s.lines.reduce((a, l) => a + l[1] * cobaltT(l[0]), 0) / tot;
+}
+
+/* ================================================================
+   Renderer, scene, camera
+   ================================================================ */
+const isMobile = matchMedia('(pointer:coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.75 : 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+const scene = new THREE.Scene();
+scene.background = srgb(0.79, 0.83, 0.86);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.3, 500);
+scene.add(camera);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 8; controls.maxDistance = 150; controls.maxPolarAngle = 1.52; controls.minPolarAngle = 0.1;
+function frameCamera() {
+  const a = innerWidth / innerHeight;
+  const dist = a < 1 ? 44 / Math.pow(a, 0.8) : 58;
+  controls.target.set(a < 1 ? 1 : 3.5, a < 1 ? 10.5 : 8.5, 2);
+  camera.position.copy(controls.target).addScaledVector(new THREE.Vector3(0.28, 0.44, 0.86).normalize(), dist);
+  controls.update();
+}
+frameCamera();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7b838a, 0.95));
+const sun = new THREE.DirectionalLight(0xfff8ee, 2.2);
+sun.position.set(26, 70, 36); sun.target.position.set(2, 0, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -36, near: 20, far: 160 });
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.radius = 4;
+scene.add(sun, sun.target);
+const fillL = new THREE.DirectionalLight(0xe6efff, 0.55); fillL.position.set(-36, 26, 24); scene.add(fillL);
+const flameLight = new THREE.PointLight(0x6688ff, 30, 0, 2); flameLight.position.set(0, 17, 0); scene.add(flameLight);
+
+/* ---------- helpers ---------- */
+const V2 = (x, y) => new THREE.Vector2(x, y);
+function tex(w, h, draw, o = {}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (o.srgb !== false) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = ANISO;
+  if (o.rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(o.rep[0], o.rep[1]); }
+  return t;
+}
+function add(geo, mat, o = {}) {
+  const m = new THREE.Mesh(geo, mat);
+  if (o.p) m.position.set(...o.p);
+  if (o.r) m.rotation.set(...o.r);
+  if (o.s) m.scale.set(...o.s);
+  m.castShadow = !!o.cast; m.receiveShadow = !!o.recv;
+  if (o.ro !== undefined) m.renderOrder = o.ro;
+  (o.to || scene).add(m);
+  return m;
+}
+function glass(o = {}) {
+  const m = new THREE.MeshPhysicalMaterial({ color: o.color ?? 0xffffff, roughness: 0.04, metalness: 0, ior: 1.5,
+    transparent: true, opacity: o.op ?? 0.12, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: o.env ?? 1.6 });
+  const k = (o.edge ?? 0.5).toFixed(2);
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+      `{ float e = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
+         e = e * e * e; diffuseColor.a = clamp(diffuseColor.a + e * ${k}, 0.0, 0.9); outgoingLight += vec3(e * 0.05); }
+       #include <opaque_fragment>`);
+  };
+  m.customProgramCacheKey = () => 'g' + k;
+  return m;
+}
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/* ================================================================
+   Room: bench, wall
+   ================================================================ */
+const benchMap = tex(512, 512, (g, w, h) => {
+  g.fillStyle = '#3b4044'; g.fillRect(0, 0, w, h);
+  const im = g.getImageData(0, 0, w, h), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 16; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  g.putImageData(im, 0, 0);
+}, { rep: [5, 2.5] });
+add(new THREE.BoxGeometry(140, 4, 60), new THREE.MeshStandardMaterial({ map: benchMap, roughness: 0.94, envMapIntensity: 0.45 }), { p: [2, -2, -4], recv: true });
+const wallMap = tex(512, 512, (g, w, h) => {
+  g.fillStyle = '#c1c9cf'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    const v = 230 + ((i * 7 + j * 3) % 9); g.fillStyle = `rgb(${v - 3},${v + 1},${v + 4})`;
+    g.fillRect(i * 128 + 3, j * 128 + 3, 122, 122);
+  }
+}, { rep: [12, 6] });
+add(new THREE.PlaneGeometry(140, 70), new THREE.MeshStandardMaterial({ map: wallMap, roughness: 0.55, envMapIntensity: 0.6 }), { p: [2, 35, -34], recv: true });
+
+/* ================================================================
+   Bunsen burner, gas tap, rubber tube
+   ================================================================ */
+const brass = new THREE.MeshStandardMaterial({ color: 0xc9a25a, metalness: 1, roughness: 0.32 });
+const chrome = new THREE.MeshStandardMaterial({ color: 0xd2d6da, metalness: 1, roughness: 0.22 });
+const castIron = new THREE.MeshStandardMaterial({ color: 0x2d3338, metalness: 0.4, roughness: 0.55 });
+const BURNER_TOP = 13;
+add(new THREE.LatheGeometry([V2(0, 0), V2(4.3, 0), V2(4.4, 0.25), V2(4.1, 0.6), V2(2.2, 1.1), V2(1.1, 1.7), V2(0.95, 2.1), V2(0, 2.1)], 48), castIron, { cast: true, recv: true });
+add(new THREE.CylinderGeometry(0.62, 0.62, BURNER_TOP - 2.1, 32, 1, true), brass, { p: [0, 2.1 + (BURNER_TOP - 2.1) / 2, 0], cast: true });
+add(new THREE.TorusGeometry(0.62, 0.06, 8, 32), brass, { p: [0, BURNER_TOP, 0], r: [Math.PI / 2, 0, 0] });
+add(new THREE.CylinderGeometry(0.56, 0.56, 0.3, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.9, side: THREE.BackSide }), { p: [0, BURNER_TOP - 0.15, 0] });
+// air collar with a visible port
+const collar = add(new THREE.CylinderGeometry(0.78, 0.78, 1.6, 32), brass, { p: [0, 3.3, 0], cast: true });
+add(new THREE.CircleGeometry(0.32, 20), new THREE.MeshStandardMaterial({ color: 0x15110c, roughness: 1 }), { p: [0.22, 0, 0.75], r: [0, 0.28, 0], to: collar });
+// gas inlet with barbs
+const INLET_DIR = new THREE.Vector3(-0.8, 0, -0.6).normalize();
+const inlet = new THREE.Group(); inlet.position.set(-1.0, 1.25, -0.75); inlet.rotation.y = Math.atan2(-INLET_DIR.x, -INLET_DIR.z) + Math.PI; scene.add(inlet);
+add(new THREE.CylinderGeometry(0.32, 0.32, 2.4, 16), brass, { p: [0, 0, 1.2], r: [Math.PI / 2, 0, 0], to: inlet, cast: true });
+for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.3, 0.42, 0.35, 16), brass, { p: [0, 0, 1.55 + i * 0.4], r: [Math.PI / 2, 0, 0], to: inlet });
+const inletEnd = new THREE.Vector3(); inlet.updateMatrixWorld(); inlet.localToWorld(inletEnd.set(0, 0, 2.2));
+// gas tap on a bench service pillar
+const TAP = new THREE.Vector3(-21, 0, -18);
+add(new RoundedBoxGeometry(5, 9, 5, 2, 0.5), new THREE.MeshStandardMaterial({ color: 0xd8dde0, roughness: 0.6 }), { p: [TAP.x, 4.5, TAP.z], cast: true, recv: true });
+add(new THREE.CylinderGeometry(0.5, 0.5, 2.6, 16), chrome, { p: [TAP.x, 6.4, TAP.z + 3.6], r: [Math.PI / 2, 0, 0], cast: true });
+add(new THREE.SphereGeometry(0.95, 20, 14), chrome, { p: [TAP.x, 6.4, TAP.z + 4.2], cast: true });
+const nozzle = new THREE.Group(); nozzle.position.set(TAP.x, 6.4, TAP.z + 4.2); nozzle.rotation.x = 0.9; scene.add(nozzle);
+add(new THREE.CylinderGeometry(0.3, 0.3, 2.2, 14), chrome, { p: [0, -1.4, 0], to: nozzle, cast: true });
+for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.28, 0.4, 0.32, 14), chrome, { p: [0, -1.5 - i * 0.38, 0], to: nozzle });
+const lever = new THREE.Group(); lever.position.set(TAP.x, 7.35, TAP.z + 4.2); scene.add(lever);
+add(new RoundedBoxGeometry(0.6, 0.45, 4.4, 2, 0.15), new THREE.MeshStandardMaterial({ color: 0xe0a41c, roughness: 0.45 }), { p: [0, 0, 1.6], to: lever, cast: true });
+lever.rotation.y = 0.0;   // in line with nozzle = gas on
+add(new THREE.CylinderGeometry(0.45, 0.45, 0.4, 16), chrome, { p: [0, -0.25, 0], to: lever });
+const nozEnd = new THREE.Vector3(); nozzle.updateMatrixWorld(); nozzle.localToWorld(nozEnd.set(0, -2.4, 0));
+const tubeCurve = new THREE.CatmullRomCurve3([
+  nozEnd.clone(), nozEnd.clone().add(new THREE.Vector3(0.2, -1.6, 1.2)), new THREE.Vector3(-17.5, 0.55, -9),
+  new THREE.Vector3(-11, 0.55, -6.5), new THREE.Vector3(-6, 0.6, -4.6),
+  inletEnd.clone().add(INLET_DIR.clone().multiplyScalar(1.6)).setY(1.1), inletEnd.clone()
+]);
+add(new THREE.TubeGeometry(tubeCurve, 120, 0.48, 14), new THREE.MeshStandardMaterial({ color: 0xb4581f, roughness: 0.62 }), { cast: true, recv: true });
+
+/* ================================================================
+   Dark backdrop on a stand
+   ================================================================ */
+const backdrop = new THREE.Group(); backdrop.position.set(0, 0, -9); scene.add(backdrop);
+add(new RoundedBoxGeometry(32, 30, 0.6, 2, 0.25), new THREE.MeshStandardMaterial({ color: 0x08090b, roughness: 1, envMapIntensity: 0.12 }), { p: [0, 16, 0], to: backdrop, cast: true, recv: true });
+for (const x of [-12, 12]) {
+  add(new THREE.BoxGeometry(1.2, 1.2, 9), castIron, { p: [x, 0.6, 0.5], to: backdrop, cast: true, recv: true });
+  add(new THREE.BoxGeometry(0.8, 4, 0.8), castIron, { p: [x, 2.2, 0.6], to: backdrop, cast: true });
+}
+
+/* ================================================================
+   Watch glasses with powders + label cards (clickable)
+   ================================================================ */
+const pickables = [];
+const ROW_Z = 6.6, ROW_X = (i) => -10 + i * 4;
+const WG_R = 3.0, WG_THETA = Math.asin(1.6 / WG_R);
+const wgGeo = new THREE.SphereGeometry(WG_R, 40, 8, 0, Math.PI * 2, 0, WG_THETA);
+function powderGeo(seed) {
+  const R = 1.9, th = Math.asin(1.05 / R);
+  const g = new THREE.SphereGeometry(R, 28, 7, 0, Math.PI * 2, 0, th);
+  const p = g.attributes.position;
+  let s = seed * 9301 + 49297;
+  const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i), k = (y - R * Math.cos(th)) / (R * (1 - Math.cos(th)));
+    const n = 1 + (rnd() - 0.5) * 0.12 * k;
+    p.setXYZ(i, p.getX(i) * n, y + (rnd() - 0.5) * 0.06 * k, p.getZ(i) * n);
+  }
+  g.computeVertexNormals();
+  g.translate(0, -R * Math.cos(th), 0);
+  return g;
+}
+SALTS.forEach((s, i) => {
+  const grp = new THREE.Group(); grp.position.set(ROW_X(i), 0, ROW_Z); scene.add(grp);
+  const wg = add(wgGeo, glass({ op: 0.14 }), { p: [0, WG_R + 0.12, 0], r: [Math.PI, 0, 0], to: grp, ro: 5 });
+  const pw = add(powderGeo(i + 1), new THREE.MeshStandardMaterial({ color: s.powder, roughness: 1, envMapIntensity: 0.6 }), { p: [0, 0.2, 0], to: grp, cast: true });
+  pw.scale.set(1, 1.15, 1);
+  const lt = tex(256, 128, (g, w, h) => {
+    g.fillStyle = '#fbfaf6'; g.fillRect(0, 0, w, h);
+    g.fillStyle = s.powder === 0x2e7fd6 ? '#2e7fd6' : '#3d5566'; g.fillRect(0, 0, w, 14);
+    g.fillStyle = '#111a21'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '800 54px system-ui,sans-serif'; g.fillText(s.html, w / 2, 62);
+    g.font = '500 18px system-ui,sans-serif'; g.fillStyle = '#4b5e6b'; g.fillText(s.name, w / 2, 106);
+  });
+  const card = new THREE.Group(); card.position.set(0, 0, 2.6); card.rotation.x = -0.42; grp.add(card);
+  const lab = add(new THREE.PlaneGeometry(3.3, 1.65), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.8 }), { p: [0, 0.78, 0], to: card, cast: true });
+  add(new THREE.PlaneGeometry(3.3, 1.65), new THREE.MeshStandardMaterial({ color: 0xeeeae2, roughness: 0.9 }), { p: [0, 0.78, -0.01], r: [0, Math.PI, 0], to: card });
+  for (const m of [wg, pw, lab]) { m.userData.salt = i; pickables.push(m); }
+  s.powderMesh = pw;
+});
+
+/* ================================================================
+   HCl cleaning bottle, wire holder
+   ================================================================ */
+const HCL = new THREE.Vector3(19.5, 0, 3.5);
+{
+  const g = new THREE.Group(); g.position.copy(HCL); g.rotation.y = 0.35; scene.add(g);
+  const R = 1.75, neck = 1.05, prof = [];
+  const rIn = (y) => y < 4.6 ? R : y < 5.6 ? R - (R - neck) * Math.sin((y - 4.6) / 1.0 * Math.PI / 2) : neck;
+  prof.push(V2(0, 0), V2(R + 0.1, 0), V2(R + 0.15, 0.12));
+  for (const y of [0.3, 4.6, 4.9, 5.2, 5.6, 6.8]) prof.push(V2(rIn(y) + 0.15, y));
+  prof.push(V2(neck + 0.2, 7.0), V2(neck, 7.05));
+  for (const y of [6.8, 5.6, 5.2, 4.9, 4.6, 0.3]) prof.push(V2(rIn(y), y));
+  prof.push(V2(0, 0.3));
+  add(new THREE.LatheGeometry(prof, 40), glass({ op: 0.12, color: 0xeef6f2 }), { to: g, ro: 5 });
+  add(new THREE.CylinderGeometry(R - 0.02, R - 0.02, 3.6, 32), new THREE.MeshStandardMaterial({ color: 0xe9f3fa, transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false }), { p: [0, 0.3 + 1.8, 0], to: g, ro: 2 });
+  const lt = tex(512, 256, (c, w, h) => {
+    c.fillStyle = '#fbfbf8'; c.fillRect(0, 0, w, h); c.fillStyle = '#c42b2b'; c.fillRect(0, 0, w, 36);
+    c.fillStyle = '#fff'; c.font = '700 22px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('WIRE CLEANING', w / 2, 19);
+    c.fillStyle = '#111a21'; c.font = '800 70px system-ui,sans-serif'; c.fillText('HCl', w / 2, 100);
+    c.font = '600 40px system-ui,sans-serif'; c.fillText('(for cleaning)', w / 2, 160);
+    c.font = '500 22px system-ui,sans-serif'; c.fillStyle = '#56656f'; c.fillText('conc. · corrosive', w / 2, 214);
+  });
+  add(new THREE.CylinderGeometry(R + 0.17, R + 0.17, 3.4, 40, 1, true, -1.3, 2.6), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.75 }), { p: [0, 2.6, 0], to: g });
+  // cap set down beside the bottle
+  add(new THREE.CylinderGeometry(1.2, 1.2, 1.1, 28), new THREE.MeshStandardMaterial({ color: 0xc42b2b, roughness: 0.5 }), { p: [3.0, 0.55, 0.8], to: g, cast: true });
+}
+// holder: wooden block with a V-notched upright
+const wood = new THREE.MeshStandardMaterial({ color: 0x9c6f45, roughness: 0.85 });
+add(new RoundedBoxGeometry(3, 1.2, 3.4, 2, 0.2), wood, { p: [17.6, 0.6, 10.6], cast: true, recv: true });
+for (const dz of [-0.55, 0.55]) add(new RoundedBoxGeometry(0.8, 2.4, 0.5, 2, 0.12), wood, { p: [17.6, 2.2, 10.6 + dz], cast: true });
+
+/* ================================================================
+   Nichrome wire loop on a glass handle (origin = loop centre, wire along +x)
+   ================================================================ */
+const tool = new THREE.Group(); tool.rotation.order = 'YZX'; scene.add(tool);
+const nichrome = new THREE.MeshStandardMaterial({ color: 0x9da2a6, metalness: 0.9, roughness: 0.35 });
+const hot = new THREE.MeshStandardMaterial({ color: 0x9da2a6, metalness: 0.9, roughness: 0.35, emissive: 0xff5a14, emissiveIntensity: 0 });
+add(new THREE.TorusGeometry(0.32, 0.036, 8, 28), hot, { r: [Math.PI / 2, 0, 0], to: tool, cast: true });
+add(new THREE.CylinderGeometry(0.034, 0.034, 1.6, 6), hot, { p: [0.32 + 0.8, 0, 0], r: [0, 0, Math.PI / 2], to: tool, cast: true });
+add(new THREE.CylinderGeometry(0.034, 0.034, 3.4, 6), nichrome, { p: [1.92 + 1.7, 0, 0], r: [0, 0, Math.PI / 2], to: tool, cast: true });
+add(new THREE.CylinderGeometry(0.2, 0.24, 0.7, 14), chrome, { p: [5.6, 0, 0], r: [0, 0, Math.PI / 2], to: tool, cast: true });
+const handleMat = new THREE.MeshPhysicalMaterial({ color: 0xdfeee9, roughness: 0.08, metalness: 0, transparent: true, opacity: 0.55, envMapIntensity: 1.6 });
+add(new THREE.CapsuleGeometry(0.28, 8.6, 4, 14), handleMat, { p: [10.25, 0, 0], r: [0, 0, Math.PI / 2], to: tool, cast: true, ro: 4 });
+const bead = add(new THREE.SphereGeometry(0.3, 14, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }), { s: [1, 0.35, 1], to: tool });
+bead.visible = false;
+
+/* ================================================================
+   Flame: layered additive cones + bloom layer + glow + sparks
+   ================================================================ */
+const flameVS = `
+  uniform float uTime, uFlick; varying float vH; varying vec3 vN; varying vec3 vV;
+  void main(){
+    vec3 p = position; float h = uv.y;
+    float sway = sin(uTime*10.7 + h*5.0)*0.55 + sin(uTime*17.9 + h*9.0)*0.3;
+    p.x += sway * uFlick * h * h;
+    p.z += cos(uTime*12.3 + h*6.5) * 0.45 * uFlick * h * h;
+    p.xz *= 1.0 + 0.045 * sin(uTime*24.0 + h*13.0);
+    vH = h;
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
+    gl_Position = projectionMatrix * mv;
+  }`;
+const flameFS = `
+  uniform vec3 uColor; uniform float uInt, uKind, uLoop;
+  varying float vH; varying vec3 vN; varying vec3 vV;
+  void main(){
+    float f = abs(dot(normalize(vN), normalize(vV)));
+    float a;
+    if (uKind < 0.5) {            // outer mantle: thicker through the middle
+      a = pow(f, 1.4) * smoothstep(0.0, 0.1, vH) * (1.0 - smoothstep(0.55, 1.0, vH));
+    } else if (uKind < 1.5) {     // inner cone: bright reaction sheet, rim-lit
+      a = (pow(1.0 - f, 1.6) * 1.2 + 0.25) * smoothstep(0.0, 0.06, vH) * (1.0 - smoothstep(0.7, 1.0, vH));
+    } else {                      // metal bloom: strongest just above the loop, fading upward
+      float above = smoothstep(uLoop - 0.07, uLoop + 0.015, vH) * exp(-max(0.0, vH - uLoop) * 2.6);
+      float below = 0.18 * smoothstep(0.0, uLoop, vH);
+      a = pow(f, 1.1) * (above + below) * (1.0 - smoothstep(0.75, 1.0, vH));
+    }
+    gl_FragColor = vec4(uColor, clamp(a * uInt, 0.0, 1.0));
+  }`;
+function flameMat(kind, color, int) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uFlick: { value: kind === 2 ? 0.45 : 0.3 }, uColor: { value: color.clone() }, uInt: { value: int }, uKind: { value: kind }, uLoop: { value: 0.3 } },
+    vertexShader: flameVS, fragmentShader: flameFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    side: kind === 1 ? THREE.DoubleSide : THREE.FrontSide, toneMapped: false
+  });
+}
+const lathe = (pts, H) => new THREE.LatheGeometry(pts.map(([r, h]) => V2(r, h * H)), 36);
+const OUT_H = 9.5, IN_H = 3.4, BL_H = 11;
+const flameOuter = add(lathe([[0.58, 0], [0.82, 0.1], [0.96, 0.28], [0.86, 0.55], [0.55, 0.8], [0.22, 0.93], [0.02, 1]], OUT_H), flameMat(0, srgb(0.28, 0.36, 1.0), 0.7), { p: [0, BURNER_TOP, 0], ro: 10 });
+const flameInner = add(lathe([[0.52, 0], [0.47, 0.25], [0.33, 0.6], [0.14, 0.88], [0.01, 1]], IN_H), flameMat(1, srgb(0.35, 0.72, 1.0), 0.75), { p: [0, BURNER_TOP, 0], ro: 11 });
+const bloom = add(lathe([[0.7, 0], [1.2, 0.22], [1.45, 0.42], [1.2, 0.66], [0.7, 0.84], [0.25, 0.95], [0.02, 1]], BL_H), flameMat(2, srgb(1, 1, 1), 0), { p: [0, BURNER_TOP, 0], ro: 12 });
+const glowTex = tex(128, 128, (g, w, h) => {
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,.45)'); gr.addColorStop(0.6, 'rgba(255,255,255,.1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+const glowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0x4466ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0.3 });
+const glow = new THREE.Sprite(glowMat); glow.position.set(0, BURNER_TOP + 3.5, 0); glow.scale.set(9, 12, 1); glow.renderOrder = 13; scene.add(glow);
+// sparks (CPU-updated points)
+const NP = 160;
+const spPos = new Float32Array(NP * 3), spCol = new Float32Array(NP * 3), spA = new Float32Array(NP);
+const spVel = new Float32Array(NP * 3), spLife = new Float32Array(NP), spMax = new Float32Array(NP);
+const spGeo = new THREE.BufferGeometry();
+spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3).setUsage(THREE.DynamicDrawUsage));
+spGeo.setAttribute('aCol', new THREE.BufferAttribute(spCol, 3).setUsage(THREE.DynamicDrawUsage));
+spGeo.setAttribute('aA', new THREE.BufferAttribute(spA, 1).setUsage(THREE.DynamicDrawUsage));
+const spMat = new THREE.ShaderMaterial({
+  uniforms: { uScale: { value: innerHeight * 0.5 } },
+  vertexShader: `attribute vec3 aCol; attribute float aA; varying vec3 vC; varying float vA; uniform float uScale;
+    void main(){ vC = aCol; vA = aA; vec4 mv = modelViewMatrix * vec4(position,1.0);
+      gl_PointSize = max(1.0, 0.16 * uScale / -mv.z * (0.5 + aA)); gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `varying vec3 vC; varying float vA;
+    void main(){ vec2 d = gl_PointCoord - 0.5; float r = dot(d,d); if (r > 0.25) discard;
+      float k = exp(-r * 14.0); gl_FragColor = vec4(mix(vC, vec3(1.0), k*0.45), k * vA); }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false
+});
+const sparks = new THREE.Points(spGeo, spMat); sparks.frustumCulled = false; sparks.renderOrder = 14; scene.add(sparks);
+spA.fill(0);
+
+/* ================================================================
+   Cobalt glass filter held in front of the camera
+   ================================================================ */
+const cobalt = new THREE.Group(); camera.add(cobalt); cobalt.visible = false;
+const coTex = tex(256, 256, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, w, h);
+  gr.addColorStop(0, 'rgba(70,95,255,.6)'); gr.addColorStop(0.45, 'rgba(30,52,205,.48)'); gr.addColorStop(1, 'rgba(18,32,160,.6)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(w * 0.1, 0); g.lineTo(w * 0.3, 0); g.lineTo(w * 0.05, h * 0.55); g.lineTo(0, h * 0.45); g.closePath(); g.fill();
+});
+const coMat = new THREE.MeshBasicMaterial({ map: coTex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+const coPane = add(new THREE.PlaneGeometry(1, 1), coMat, { to: cobalt, ro: 100 });
+const frameMat = new THREE.MeshBasicMaterial({ color: 0x111418, depthTest: false, depthWrite: false });
+const coFrame = [0, 1, 2, 3].map(() => add(new THREE.PlaneGeometry(1, 1), frameMat, { to: cobalt, ro: 101 }));
+const coHandle = add(new THREE.PlaneGeometry(1, 1), frameMat, { to: cobalt, ro: 101 });
+function layoutCobalt() {
+  const d = 1, vh = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * d, vw = vh * camera.aspect;
+  const w = Math.min(vw * 0.62, vh * 0.62), h = vh * 0.52, cy = vh * 0.15, b = vh * 0.012;
+  cobalt.position.set(0, 0, -d);
+  coPane.scale.set(w, h, 1); coPane.position.set(0, cy, 0);
+  coFrame[0].scale.set(w + 2 * b, b, 1); coFrame[0].position.set(0, cy + h / 2 + b / 2, 0);
+  coFrame[1].scale.set(w + 2 * b, b, 1); coFrame[1].position.set(0, cy - h / 2 - b / 2, 0);
+  coFrame[2].scale.set(b, h, 1); coFrame[2].position.set(-w / 2 - b / 2, cy, 0);
+  coFrame[3].scale.set(b, h, 1); coFrame[3].position.set(w / 2 + b / 2, cy, 0);
+  coHandle.scale.set(b * 2.2, vh * 0.3, 1); coHandle.position.set(w * 0.18, cy - h / 2 - vh * 0.15, 0);
+}
+layoutCobalt();
+
+/* ================================================================
+   Wire state, colour model
+   ================================================================ */
+const S = {
+  load: new Array(6).fill(0), floor: new Array(6).fill(0), sel: -1, pick: 0.85,
+  heat: 0, cleaning: false, cobalt: false, backdrop: true, t: 0, paused: false,
+  observe: null, lastContam: false,
+  obs: { color: BLUE.clone(), name: 'pale blue', note: 'clean Bunsen flame', w: new Array(6).fill(0), B: 0, lines: [] }
+};
+const LOOP_FLAME = new THREE.Vector3(0.95, BURNER_TOP + 3.35, 0.25);
+function computeObserved() {
+  const o = S.obs, inF = S.heat;
+  let sum = 0, sumRaw = 0; const mix = new THREE.Color(0, 0, 0);
+  SALTS.forEach((s, i) => {
+    const raw = S.load[i] * s.bright * inF;
+    const w = raw * (S.cobalt ? s.coT : 1);
+    o.w[i] = w; sum += w; sumRaw += raw;
+    mix.r += s.col.r * w; mix.g += s.col.g * w; mix.b += s.col.b * w;
+  });
+  if (sum > 1e-6) mix.multiplyScalar(1 / sum);
+  o.B = 1 - Math.exp(-1.5 * sum);
+  o.mix = mix;
+  o.color.copy(BLUE).lerp(sum > 1e-6 ? mix : BLUE, Math.min(1, o.B * 1.15));
+  // name
+  let d = -1, dv = 0, e = -1, ev = 0;
+  o.w.forEach((w, i) => { if (w > dv) { e = d; ev = dv; d = i; dv = w; } else if (w > ev) { e = i; ev = w; } });
+  const share = (v) => v / Math.max(1e-6, sum);
+  if (sum < 0.06) {
+    o.name = 'pale blue';
+    o.note = S.cobalt && sumRaw > 0.2 ? 'yellow blocked by cobalt glass' : (S.load.some(l => l > 0.02) ? 'sample burnt off — faint trace' : 'clean Bunsen flame');
+    if (S.heat < 0.2 && S.load.some(l => l > 0.02)) o.note = 'wire out of the flame';
+  } else {
+    const ds = SALTS[d];
+    o.name = ds.word;
+    o.note = S.cobalt ? 'seen through cobalt glass' : `${ds.metal} emission`;
+    if (S.cobalt && ds.metal === 'K') { o.name = 'violet-crimson'; o.note = 'K lilac revealed through cobalt glass'; }
+    if (ds.metal === 'Na' && S.sel >= 0 && SALTS[S.sel].metal !== 'Na') { o.name = 'yellow'; o.note = `Na contamination masks ${SALTS[S.sel].metal}`; }
+    else if (e >= 0 && share(ev) > 0.18) { o.name = `${ds.word}, ${SALTS[e].word} tint`; o.note = `mixed: ${ds.metal} + ${SALTS[e].metal}`; }
+    if (o.B < 0.35) o.name = 'faint ' + o.name;
+  }
+  // spectrum lines
+  o.lines.length = 0;
+  for (const [nm, r] of BASE_LINES) o.lines.push([nm, r * (S.cobalt ? cobaltT(nm) : 1) * (1 - 0.6 * o.B)]);
+  SALTS.forEach((s, i) => { const raw = S.load[i] * s.bright * inF; if (raw > 0.002) for (const [nm, r] of s.lines) o.lines.push([nm, raw * r * (S.cobalt ? cobaltT(nm) : 1)]); });
+}
+
+/* ================================================================
+   Wire motion planner
+   ================================================================ */
+const pose = { p: new THREE.Vector3(12.6, 2.05, 10.3), yaw: -0.08, pitch: 0.12 };
+const REST = { p: new THREE.Vector3(12.6, 2.05, 10.3), yaw: -0.08, pitch: 0.12 };
+const FLAME = { p: LOOP_FLAME.clone(), yaw: -0.55, pitch: 0.3 };
+const NEAR_FLAME = { p: new THREE.Vector3(5.2, BURNER_TOP + 3.6, 3.0), yaw: -0.55, pitch: 0.3 };
+let queue = [], seg = null;
+const P = (x, y, z, yaw, pitch, extra = {}) => ({ p: new THREE.Vector3(x, y, z), yaw, pitch, ...extra });
+function inFlameZone(p) { return Math.hypot(p.x, p.z) < 2.2 && p.y > BURNER_TOP && p.y < BURNER_TOP + 9; }
+function plan(list) {
+  queue = [];
+  if (inFlameZone(pose.p)) queue.push({ ...NEAR_FLAME, p: NEAR_FLAME.p.clone() });
+  queue.push(...list); seg = null;
+}
+function nextSeg() {
+  const n = queue.shift(); if (!n) { seg = null; return; }
+  const from = { p: pose.p.clone(), yaw: pose.yaw, pitch: pose.pitch };
+  const dist = from.p.distanceTo(n.p) + Math.abs(n.pitch - from.pitch) * 3;
+  seg = { from, to: n, t: 0, dur: n.dur ?? (n.hold ? n.hold : 0.25 + dist / 26) };
+}
+function stepMotion(dt) {
+  if (!seg) { if (queue.length) nextSeg(); else return; }
+  seg.t += dt;
+  const k = ease(Math.min(1, seg.t / seg.dur));
+  pose.p.lerpVectors(seg.from.p, seg.to.p, k);
+  pose.yaw = seg.from.yaw + (seg.to.yaw - seg.from.yaw) * k;
+  pose.pitch = seg.from.pitch + (seg.to.pitch - seg.from.pitch) * k;
+  if (seg.t >= seg.dur) { const cb = seg.to.cb; seg = null; if (cb) cb(); nextSeg(); }
+}
+function holdHere(sec, cb) { return { p: null, hold: sec, cb, lazy: true }; }
+// helper to insert a hold at the previous waypoint
+function H(prev, sec, cb) { return { ...prev, p: prev.p.clone(), hold: sec, dur: sec, cb }; }
+
+function testSalt(i) {
+  S.sel = i; updateSampleHud();
+  const x = ROW_X(i), z = ROW_Z, up = P(x, 8, z + 0.2, -0.95, 0.5), dip = P(x, 0.62, z + 0.05, -0.95, 0.5);
+  const up2 = P(x, 7.5, z + 0.2, -0.95, 0.45);
+  plan([
+    up, dip,
+    H(dip, 0.35, () => {
+      const others = S.load.some((l, j) => j !== i && l > 0.04);
+      S.lastContam = others;
+      S.load[i] = Math.min(1.2, Math.max(S.load[i], 0) + S.pick);
+      S.floor[i] = Math.max(S.floor[i], (SALTS[i].metal === 'Na' ? 0.32 : 0.2) * S.load[i]);
+      S.cleaning = false;
+      dent(i);
+    }),
+    up2, NEAR_FLAME, { ...FLAME, p: FLAME.p.clone(), cb: () => { S.observe = { i, t: 0, contam: S.lastContam }; } }
+  ]);
+}
+function cleanWire() {
+  const top = P(HCL.x, 12.5, HCL.z, -0.6, 1.3), dip = P(HCL.x, 3.2, HCL.z, -0.6, 1.3);
+  plan([
+    P(HCL.x - 2, 12, HCL.z + 2, -0.6, 0.9), top, dip,
+    H(dip, 0.5, () => { for (let j = 0; j < 6; j++) { S.load[j] *= 0.35; S.floor[j] = 0; } S.cleaning = true; S.observe = null; }),
+    P(HCL.x, 12.5, HCL.z, -0.6, 1.2), NEAR_FLAME, { ...FLAME, p: FLAME.p.clone() },
+    H(FLAME, 2.6, () => { S.load.fill(0); S.floor.fill(0); S.cleaning = false; S.sel = -1; logSys('Wire cleaned in HCl and flamed'); updateSampleHud(); }),
+    NEAR_FLAME, P(REST.p.x - 1, 6, REST.p.z, REST.yaw, 0.2), { ...REST, p: REST.p.clone() }
+  ]);
+}
+function dipAgain() { if (S.sel < 0) { testSalt(1); return; } testSalt(S.sel); }
+// small visible dip in the powder each time it is sampled
+function dent(i) { const m = SALTS[i].powderMesh; m.scale.y = Math.max(0.75, m.scale.y - 0.04); }
+
+/* ================================================================
+   Simulation step
+   ================================================================ */
+const tmpV = new THREE.Vector3();
+const sparkCol = new THREE.Color();
+let spawnAcc = 0;
+function sim(dt) {
+  S.t += dt;
+  stepMotion(dt);
+  tool.position.copy(pose.p); tool.rotation.set(0, pose.yaw, pose.pitch);
+  const inF = inFlameZone(pose.p) && pose.p.distanceTo(LOOP_FLAME) < 1.6;
+  S.heat += ((inF ? 1 : 0) - S.heat) * (1 - Math.exp(-dt * (inF ? 5 : 2.5)));
+  hot.emissiveIntensity = 2.2 * S.heat * (0.85 + 0.15 * Math.sin(S.t * 31));
+  // burn-off: sample fades toward a stubborn residue; cleaning removes everything
+  if (S.heat > 0.5) for (let j = 0; j < 6; j++) {
+    const tau = S.cleaning ? 0.5 : 1.9;
+    S.load[j] = S.floor[j] + (S.load[j] - S.floor[j]) * Math.exp(-dt / tau);
+  }
+  const tot = S.load.reduce((a, b) => a + b, 0);
+  bead.visible = tot > 0.03;
+  if (bead.visible) {
+    const c = new THREE.Color(0, 0, 0); let ws = 0;
+    S.load.forEach((l, j) => { const pc = new THREE.Color(SALTS[j].powder); c.r += pc.r * l; c.g += pc.g * l; c.b += pc.b * l; ws += l; });
+    bead.material.color.copy(c.multiplyScalar(1 / ws)).lerp(new THREE.Color(0x553322), S.heat * 0.5);
+    const s = 0.5 + 0.7 * Math.sqrt(Math.min(1.2, tot)); bead.scale.set(s, 0.35 * s, s);
+  }
+  computeObserved();
+  const o = S.obs;
+  // flame uniforms
+  for (const m of [flameOuter, flameInner, bloom]) m.material.uniforms.uTime.value = S.t;
+  flameOuter.material.uniforms.uInt.value = 0.7 * (1 - 0.55 * o.B);
+  flameInner.material.uniforms.uInt.value = 0.75 * (1 - 0.3 * o.B);
+  bloom.material.uniforms.uInt.value = 1.25 * o.B;
+  if (o.B > 0.001) bloom.material.uniforms.uColor.value.copy(o.mix);
+  bloom.material.uniforms.uLoop.value = (pose.p.y - BURNER_TOP) / BL_H;
+  bloom.position.x = 0.35 * S.heat;
+  glowMat.color.copy(BLUE).lerp(o.B > 0.001 ? o.mix : BLUE, o.B); glowMat.opacity = 0.22 + 0.5 * o.B;
+  glow.scale.set(8 + 8 * o.B, 11 + 7 * o.B, 1); glow.position.y = BURNER_TOP + 3 + 2 * o.B;
+  flameLight.color.copy(glowMat.color); flameLight.intensity = 25 + 320 * o.B;
+  // sparks: a few from the flame tip, many from a charged loop
+  spawnAcc += dt * (5 + 70 * o.B);
+  for (let i = 0; i < NP; i++) {
+    if (spLife[i] > 0) {
+      spLife[i] -= dt;
+      spVel[i * 3 + 1] += dt * 6; spVel[i * 3] += (Math.random() - 0.5) * dt * 10; spVel[i * 3 + 2] += (Math.random() - 0.5) * dt * 10;
+      spPos[i * 3] += spVel[i * 3] * dt; spPos[i * 3 + 1] += spVel[i * 3 + 1] * dt; spPos[i * 3 + 2] += spVel[i * 3 + 2] * dt;
+      spA[i] = Math.max(0, spLife[i] / spMax[i]) * 0.95;
+    } else if (spawnAcc >= 1) {
+      spawnAcc -= 1;
+      const fromLoop = o.B > 0.05 && Math.random() < 0.85;
+      if (fromLoop) tmpV.copy(pose.p).add(new THREE.Vector3((Math.random() - 0.5) * 0.6, 0.3, (Math.random() - 0.5) * 0.6));
+      else tmpV.set((Math.random() - 0.5) * 0.6, BURNER_TOP + 5 + Math.random() * 3, (Math.random() - 0.5) * 0.6);
+      spPos[i * 3] = tmpV.x; spPos[i * 3 + 1] = tmpV.y; spPos[i * 3 + 2] = tmpV.z;
+      spVel[i * 3] = (Math.random() - 0.5) * 2.5 - (fromLoop ? 0.6 : 0); spVel[i * 3 + 1] = 6 + Math.random() * 9; spVel[i * 3 + 2] = (Math.random() - 0.5) * 2.5;
+      spMax[i] = spLife[i] = 0.5 + Math.random() * 1.0;
+      sparkCol.copy(fromLoop ? o.mix : BLUE).lerp(new THREE.Color(1, 0.9, 0.7), Math.random() * 0.3);
+      spCol[i * 3] = sparkCol.r; spCol[i * 3 + 1] = sparkCol.g; spCol[i * 3 + 2] = sparkCol.b;
+      spA[i] = 0.95;
+    } else spA[i] = 0;
+  }
+  if (spawnAcc > 4) spawnAcc = 4;
+  spGeo.attributes.position.needsUpdate = true; spGeo.attributes.aCol.needsUpdate = true; spGeo.attributes.aA.needsUpdate = true;
+  // log an observation once the sample has been in the flame briefly
+  if (S.observe) {
+    S.observe.t += dt;
+    if (S.observe.t > 0.7) { logTest(S.observe.i, S.observe.contam); S.observe = null; }
+  }
+  hudDirty = true;
+}
+
+/* ================================================================
+   HUD
+   ================================================================ */
+const $ = (id) => document.getElementById(id);
+const spec = $('spec'), sg = spec.getContext('2d');
+let hudDirty = true, hudT = 0;
+function sizeSpec() { const r = spec.getBoundingClientRect(), d = Math.min(devicePixelRatio, 2); spec.width = Math.round(r.width * d); spec.height = Math.round(r.height * d); sg.setTransform(d, 0, 0, d, 0, 0); }
+function nmRGB(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 440) { r = -(nm - 440) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+  else if (nm < 510) { g = 1; b = -(nm - 510) / 20; } else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+  else if (nm < 645) { r = 1; g = -(nm - 645) / 65; } else r = 1;
+  const f = nm < 420 ? 0.3 + 0.7 * (nm - 380) / 40 : nm > 700 ? 0.3 + 0.7 * (780 - nm) / 80 : 1;
+  return [r * f, g * f, b * f].map(v => Math.round(255 * Math.pow(Math.max(0, v), 0.8)));
+}
+function drawSpec() {
+  const W = spec.width / Math.min(devicePixelRatio, 2), H = spec.height / Math.min(devicePixelRatio, 2);
+  sg.fillStyle = '#05070a'; sg.fillRect(0, 0, W, H);
+  const X = (nm) => (nm - 380) / 400 * W;
+  for (let x = 0; x < W; x++) { const [r, g, b] = nmRGB(380 + x / W * 400); sg.fillStyle = `rgba(${r},${g},${b},0.09)`; sg.fillRect(x, H - 4, 1, 4); }
+  if (S.cobalt) { sg.fillStyle = 'rgba(0,0,0,.55)'; sg.fillRect(X(545), 0, X(655) - X(545), H); sg.fillStyle = 'rgba(120,150,255,.7)'; sg.font = '9px system-ui,sans-serif'; sg.fillText('cobalt blocks', X(560), 10); }
+  const mx = Math.max(1, ...S.obs.lines.map(l => l[1]));
+  sg.globalCompositeOperation = 'lighter';
+  for (const [nm, v] of S.obs.lines) {
+    const a = Math.min(1, v / mx * (mx > 1 ? 1 : 1)), [r, g, b] = nmRGB(nm);
+    if (a < 0.02) continue;
+    sg.shadowColor = `rgba(${r},${g},${b},${a})`; sg.shadowBlur = 6;
+    sg.fillStyle = `rgba(${r},${g},${b},${Math.min(1, a * 1.1)})`;
+    sg.fillRect(X(nm) - 1, H * (1 - Math.min(1, 0.25 + a)), 2.2, H);
+  }
+  sg.shadowBlur = 0; sg.globalCompositeOperation = 'source-over';
+}
+function hex(c) { const s = c.clone().convertLinearToSRGB(); return `rgb(${Math.round(s.r * 255)},${Math.round(s.g * 255)},${Math.round(s.b * 255)})`; }
+function chipColor() {
+  const c = S.obs.color.clone(); if (S.cobalt) c.lerp(srgb(0.15, 0.25, 0.85), 0.3);
+  return hex(c);
+}
+function updateHud() {
+  const o = S.obs;
+  $('chip').style.background = chipColor();
+  $('chip').style.boxShadow = `inset 0 0 10px rgba(255,255,255,.35), 0 0 ${6 + 16 * o.B}px ${chipColor()}`;
+  $('cname').textContent = o.name; $('cnote').textContent = o.note;
+  drawSpec();
+}
+function updateSampleHud() {
+  const el = $('sample');
+  if (S.sel < 0) { const t = S.load.reduce((a, b) => a + b, 0); el.innerHTML = t > 0.02 ? '— <small>residue on wire</small>' : '— <small>clean wire</small>'; }
+  else { const s = SALTS[S.sel]; el.innerHTML = `${s.html} <small>${s.name}</small>`; }
+  document.querySelectorAll('#salts button').forEach((b, i) => b.classList.toggle('on', i === S.sel));
+}
+const logEl = $('log'); const LOGMAX = 7;
+function logPush(li) { const e = logEl.querySelector('.empty'); if (e) e.remove(); logEl.prepend(li); while (logEl.children.length > LOGMAX) logEl.lastChild.remove(); }
+function logTest(i, contam) {
+  const li = document.createElement('li');
+  li.innerHTML = `<i style="background:${chipColor()}"></i><b>${SALTS[i].html}</b><span>${S.obs.name}</span>${contam ? '<em>contaminated</em>' : ''}`;
+  logPush(li);
+}
+function logSys(t) { const li = document.createElement('li'); li.className = 'sys'; li.innerHTML = `<i style="background:#fff"></i><span>${t}</span>`; logPush(li); }
+
+/* ================================================================
+   Controls & picking
+   ================================================================ */
+const saltsEl = $('salts');
+SALTS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `<span class="d" style="background:${hex(s.col)}"></span>${s.html}`;
+  b.addEventListener('click', () => testSalt(i));
+  saltsEl.appendChild(b);
+});
+$('bDip').addEventListener('click', dipAgain);
+$('bClean').addEventListener('click', cleanWire);
+$('bBack').addEventListener('click', () => {
+  S.backdrop = !S.backdrop; backdrop.visible = S.backdrop;
+  $('bBack').textContent = `Dark backdrop: ${S.backdrop ? 'on' : 'off'}`; $('bBack').classList.toggle('on', S.backdrop);
+});
+$('bCo').addEventListener('click', () => {
+  S.cobalt = !S.cobalt; cobalt.visible = S.cobalt;
+  $('bCo').textContent = `Cobalt glass: ${S.cobalt ? 'on' : 'off'}`; $('bCo').classList.toggle('on', S.cobalt);
+});
+const pickEl = $('pick');
+const readPick = () => { S.pick = +pickEl.value; $('amt').textContent = S.pick < 0.3 ? 'faint' : S.pick < 0.7 ? 'moderate' : 'full bloom'; };
+pickEl.addEventListener('input', readPick); readPick();
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let down = null;
+function hit(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObjects(pickables, false)[0];
+  return h ? h.object.userData.salt : -1;
+}
+canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerup', (e) => {
+  if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null;
+  if (moved > 6) return; const i = hit(e); if (i >= 0) testSalt(i);
+});
+canvas.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && !e.buttons) canvas.style.cursor = hit(e) >= 0 ? 'pointer' : ''; });
+
+function onResize() {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false); spMat.uniforms.uScale.value = innerHeight * 0.5 * renderer.getPixelRatio();
+  layoutCobalt(); sizeSpec(); hudDirty = true;
+}
+addEventListener('resize', onResize);
+
+/* ================================================================
+   Loop
+   ================================================================ */
+sizeSpec(); onResize();
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 1 / 20);
+  if (!S.paused) sim(dt);
+  controls.update();
+  hudT += dt;
+  if (hudDirty && hudT > 1 / 15) { hudT = 0; hudDirty = false; updateHud(); }
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(frame);
+
+// hook for automated checks; has no effect on normal use
+window.__flame = {
+  S, testSalt, cleanWire, dipAgain,
+  click(id) { document.getElementById(id).click(); },
+  step(sec, h = 1 / 60) { for (let t = 0; t < sec; t += h) sim(h); updateHud(); renderer.render(scene, camera); },
+  hold(on) { renderer.setAnimationLoop(on ? null : frame); if (on) { controls.update(); updateHud(); renderer.render(scene, camera); } },
+  view(t, p) { controls.target.set(...t); camera.position.set(...p); controls.update(); }
+};
+</script>
+</body>
+</html>
